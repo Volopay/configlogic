@@ -12,7 +12,7 @@ class Settingslogic < Hash
     end
 
     # Enables Settings.get('nested.key.name') for dynamic access
-    def get(key)
+    def get_value(key)
       parts = key.split('.')
       curs = self
       while p = parts.shift
@@ -23,6 +23,14 @@ class Settingslogic < Hash
 
     def source(value = nil)
       @source ||= value
+    end
+
+    def redis_key_name_space(&value)
+      @redis_key_name_space ||= value
+    end
+
+    def config_class(value = nil)
+      @config_class ||= value
     end
 
     def namespace(value = nil)
@@ -91,7 +99,7 @@ class Settingslogic < Hash
   # Basically if you pass a symbol it will look for that file in the configs directory of your rails app,
   # if you are using this in rails. If you pass a string it should be an absolute path to your settings file.
   # Then you can pass a hash, and it just allows you to access the hash via methods.
-  def initialize(hash_or_file = self.class.source, section = nil)
+  def initialize(hash_or_file = self.class.source, section = nil, key_trail = '')
     #puts "new! #{hash_or_file}"
     case hash_or_file
     when nil
@@ -106,7 +114,9 @@ class Settingslogic < Hash
       end
       self.replace hash
     end
+
     @section = section || self.class.source  # so end of error says "in application.yml"
+    @key_trail = key_trail
     create_accessors!
   end
 
@@ -117,7 +127,7 @@ class Settingslogic < Hash
     return missing_key("Missing setting '#{key}' in #{@section}") unless has_key? key
     value = fetch(key)
     create_accessor_for(key)
-    value.is_a?(Hash) ? self.class.new(value, "'#{key}' section in #{@section}") : value
+    value.is_a?(Hash) ? self.class.new(value, "'#{key}' section in #{@section}", "#{@key_trail}.#{key}") : value
   end
 
   def [](key)
@@ -126,7 +136,7 @@ class Settingslogic < Hash
 
   def []=(key,val)
     # Setting[:key][:key2] = 'value' for dynamic settings
-    val = self.class.new(val, @section) if val.is_a? Hash
+    val = self.class.new(val, @section, "#{@key_trail}.#{key}") if val.is_a? Hash
     store(key.to_s, val)
     create_accessor_for(key, val)
   end
@@ -152,20 +162,31 @@ class Settingslogic < Hash
   def create_accessor_for(key, val=nil)
     return unless key.to_s =~ /^\w+$/  # could have "some-setting:" which blows up eval
     instance_variable_set("@#{key}", val)
+
     self.class.class_eval <<-EndEval
       def #{key}
         return @#{key} if @#{key}
         return missing_key("Missing setting '#{key}' in #{@section}") unless has_key? '#{key}'
         value = fetch('#{key}')
         @#{key} = if value.is_a?(Hash)
-          self.class.new(value, "'#{key}' section in #{@section}")
+          self.class.new(value, "'#{key}' section in #{@section}", "#{@key_trail}.#{key}")
         elsif value.is_a?(Array) && value.all?{|v| v.is_a? Hash}
           value.map{|v| self.class.new(v)}
         else
-          value
+          Proc.new{find_key("#{@key_trail}", "#{key}")}
         end
       end
     EndEval
+  end
+
+  def find_key(trail, key)
+    final_key = "#{trail}.#{key}"[1..-1] 
+    cache_key = "config-#{self.class.redis_key_name_space.call}-#{final_key}"
+    Rails.cache.fetch(cache_key, expires_in: 24.hours) do
+      db_key = final_key.split(".").map{|a| "'#{a}'"}.join("->").sub(/.*\K->/, '->>')
+      db_key = "config->#{db_key}"
+      self.class.config_class.pluck(Arel.sql(db_key)).first
+    end
   end
 
   def symbolize_keys
