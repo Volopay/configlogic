@@ -1,23 +1,23 @@
-= Settingslogic
+= Configlogic
 
-== Project Moved: This project has been moved to https://github.com/settingslogic/settingslogic
+== Project Moved: This project has been moved to https://github.com/Configlogic/Configlogic
 
-Settingslogic is a simple configuration / settings solution that uses an ERB enabled YAML file. It has been great for
-our apps, maybe you will enjoy it too.  Settingslogic works with Rails, Sinatra, or any Ruby project.
+Configlogic is a simple configuration / settings solution that uses an ERB enabled YAML file. It has been great for
+our apps, maybe you will enjoy it too.  Configlogic works with Rails, Sinatra, or any Ruby project.
 
-{<img src="https://badge.fury.io/rb/settingslogic.svg" alt="Gem Version" />}[http://badge.fury.io/rb/settingslogic]
-{<img src="https://travis-ci.org/settingslogic/settingslogic.svg" alt="Build Status" />}[https://travis-ci.org/settingslogic/settingslogic]
-{<img src="http://inch-ci.org/github/settingslogic/settingslogic.png?branch=master" alt="Inline docs" />}[http://inch-ci.org/github/settingslogic/settingslogic]
+{<img src="https://badge.fury.io/rb/Configlogic.svg" alt="Gem Version" />}[http://badge.fury.io/rb/Configlogic]
+{<img src="https://travis-ci.org/Configlogic/Configlogic.svg" alt="Build Status" />}[https://travis-ci.org/Configlogic/Configlogic]
+{<img src="http://inch-ci.org/github/Configlogic/Configlogic.png?branch=master" alt="Inline docs" />}[http://inch-ci.org/github/Configlogic/Configlogic]
 
 == Helpful links
 
-* <b>Documentation:</b> http://rdoc.info/projects/binarylogic/settingslogic
-* <b>Repository:</b> http://github.com/binarylogic/settingslogic/tree/master
-* <b>Issues:</b> http://github.com/binarylogic/settingslogic/issues
+* <b>Documentation:</b> http://rdoc.info/projects/binarylogic/Configlogic
+* <b>Repository:</b> http://github.com/binarylogic/Configlogic/tree/master
+* <b>Issues:</b> http://github.com/binarylogic/Configlogic/issues
 
 == Installation
 
-  gem install settingslogic
+  gem install Configlogic
 
 == Usage
 
@@ -26,7 +26,7 @@ our apps, maybe you will enjoy it too.  Settingslogic works with Rails, Sinatra,
 Instead of defining a Settings constant for you, that task is left to you. Simply create a class in your application
 that looks like:
 
-  class Settings < Settingslogic
+  class Settings < Configlogic
     source "#{Rails.root}/config/application.yml"
     namespace Rails.env
   end
@@ -73,7 +73,7 @@ If your default settings seem to be overwriting your environment-specific settin
   => "development"
 
   >> Settings.cool
-  => "#<Settingslogic::Settings ... >"
+  => "#<Configlogic::Settings ... >"
 
   >> Settings.cool.saweet
   => "nested settings"
@@ -123,7 +123,7 @@ Rails app it may make sense to suppress this in production and return nil for mi
 While it's useful to stop and highlight an error in development or test environments, this is
 often not the right answer for production.
 
-  class Settings < Settingslogic
+  class Settings < Configlogic
     source "#{Rails.root}/config/application.yml"
     namespace Rails.env
     suppress_errors Rails.env.production?
@@ -139,10 +139,10 @@ in the global Object namespace:
 
   set :application, "myapp"  # does "def application" globally
 
-This can cause collisions with Settingslogic, since those methods are global. Luckily, the
+This can cause collisions with Configlogic, since those methods are global. Luckily, the
 solution is to just add a call to load! in your class:
 
-  class Settings < Settingslogic
+  class Settings < Configlogic
     source "#{Rails.root}/config/application.yml"
     namespace Rails.env
     load!

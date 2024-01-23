@@ -11,11 +11,13 @@ class Configlogic < Hash
 
   class DynamicCallbackHandler
     def self.add_after_commit_callback_for_column(current_klass, klass, column_name)
-      klass.after_commit :handle_config_change, if: -> { saved_change_to_attribute?(column_name) }
-      # klass.after_commit :handle_config_change
-  
-      klass.define_method(:handle_config_change) do
-        current_klass.burst_cache!
+      if klass
+        klass.after_commit :handle_config_change, if: -> { saved_change_to_attribute?(column_name) }
+        # klass.after_commit :handle_config_change
+    
+        klass.define_method(:handle_config_change) do
+          current_klass.burst_cache!
+        end
       end
     end
   end
@@ -149,7 +151,7 @@ class Configlogic < Hash
 
     case hash_or_file
     when nil
-      raise Errno::ENOENT, "No file specified as Settingslogic source"
+      raise Errno::ENOENT, "No file specified as Configlogic source"
     when Hash
       self.replace hash_or_file
     else
