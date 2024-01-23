@@ -46,7 +46,7 @@ class Configlogic < Hash
     def burst_cache!
       if cache_values_to_redis
         keys = "config-#{redis_key.call}-*"
-        # p "bursting cache for keys: #{keys}"
+        p "bursting cache for keys: #{keys}"
         Rails.cache.delete_matched(keys)
       end
     end
@@ -230,6 +230,7 @@ class Configlogic < Hash
       final_key_for_db_fetch = "#{trail}.#{key}"[1..-1] 
       cache_key = "config-#{self.class.redis_key.call}-#{final_key_for_db_fetch}"
       Rails.cache.fetch(cache_key, expires_in: 24.hours) do
+        p "updating cache => #{cache_key}"
         final_value(final_key_for_db_fetch, value)
       end
     else
