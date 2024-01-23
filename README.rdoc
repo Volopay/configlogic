@@ -37,6 +37,7 @@ Options:
 Using a namespace allows us to change our configuration depending on our environment:
     Make sure to have yml file name exactly same as initialize file name without Vp, in this example `client_config.yml` to `configsetting` folder
   `config/configsetting/client_config.yml`
+  
   ```
   defaults: &defaults
   host: "volopay.com"
