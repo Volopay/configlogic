@@ -21,7 +21,8 @@ Create a class in lib initializer like (Please add `Vp` in the class name)
         source "#{Rails.root}/config/configsetting/client_config.yml" #This has to be very last call and mandatory
       end
     end
-```
+  end
+  ```  
 
 Few things to notice, source has to be last call.
 Options: 
@@ -58,16 +59,14 @@ Using a namespace allows us to change our configuration depending on our environ
         enabled: true
     reimbursement:
       enabled: true
+  development:
+    <<: *defaults
+  test:
+    <<: *defaults
+  production:
+    <<: *defaults
+  ```
 
-development:
-  <<: *defaults
-
-test:
-  <<: *defaults
-
-production:
-  <<: *defaults
-```
 
 _Note_: Certain Ruby/Bundler versions include a version of the Psych YAML parser which incorrectly handles merges (the `<<` in the example above.)
 If your default settings seem to be overwriting your environment-specific settings, including the following lines in your config/boot.rb file may solve the problem:

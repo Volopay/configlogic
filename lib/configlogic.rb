@@ -57,7 +57,7 @@ class Configlogic < Hash
 
     def source(value = nil)
       @source ||= value
-      unless self.config_class.constantize.respond_to? :handle_config_change
+      if self.config_class && !self.config_classconstantize.respond_to?(:handle_config_change)
         DynamicCallbackHandler.add_after_commit_callback_for_column(self, self.config_class.constantize, self.config_class_column)
       end
       @source
