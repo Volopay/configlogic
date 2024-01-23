@@ -3,11 +3,11 @@
 Configlogic is a simple configuration / settings solution that uses an ERB enabled YAML file. It has been based on https://github.com/settingslogic/settingslogic
 
 == Installation
-  `gem 'configlogic', git: 'https://github.com/Volopay/configlogic.git'` in yout Gemfile
+  gem 'configlogic', git: 'https://github.com/Volopay/configlogic.git' 
+  in your Gemfile
 == Usage (Make sure to follow conventions)
 === 1. Define your class
 Create a class in lib initializer like (Please add `Vp` in the class name)
-  ```
   Rails.application.config.to_prepare do
     class VpClientConfig < Configlogic
         namespace Rails.env
@@ -22,51 +22,54 @@ Create a class in lib initializer like (Please add `Vp` in the class name)
       end
     end
   end
-  ```  
 
 Few things to notice, source has to be last call.
 Options: 
--`cache_values_to_redis` If you want to have cache the values, by default Rails.cache will be used
--`get_value_from_db true` If you want to store config values in DB, otherwise the json file supplied in source would be used
--`config_class` Class in which config json needs to be stored
--`config_class_column` Column of above class in which config json needs to be stored
--`redis_key` This needs to be a Proc, identifying a unique key prefix for keys, what gets saved in REDIS is something like this key `"config-517aa5ee0eaef2d5c6b91d705de0bba1-modules.payments-enabled"`
+
+* **cache_values_to_redis** : If you want to have cache the values, by default Rails.cache will be used
+
+* **get_value_from_db** : true If you want to store config values in DB, otherwise the json file supplied in source would be used
+
+* **config_class** : Class in which config json needs to be stored
+
+* **config_class_column** : Column of above class in which config json needs to be stored
+
+* **redis_key** : This needs to be a Proc, identifying a unique key prefix for keys, what gets saved in REDIS is something like this key `config-517aa5ee0eaef2d5c6b91d705de0bba1-modules.payments-enabled`
 
 === 2. Create your settings
 
 Using a namespace allows us to change our configuration depending on our environment:
-  Make sure to have yml file name exactly same as initialize file name without Vp, in this example `client_config.yml` to `configsetting` folder
-  `config/configsetting/client_config.yml`
+Make sure to have yml file name exactly same as initialize file name without Vp, in this example `client_config.yml` to `configsetting` folder
+`config/configsetting/client_config.yml`
 
-  ```
-  defaults: &defaults
-  host: "volopay.com"
-  modules:
-    payments:
-      enabled: false
-      ocr:
-        UI: Rajesh Raikwar
-        billing:
-        data: something
+    defaults: &defaults
+    host: "volopay.com"
+    modules:
+      payments:
+        enabled: false
+        ocr:
+          UI: Rajesh Raikwar
+          billing:
+          data: something
+          enabled: true
+          column_value: "OCR"
+        international_payments:
+          enabled: true
+        bulk_payments:
+          enabled: true
+      cards:
         enabled: true
-        column_value: "OCR"
-      international_payments:
+        card_request:
+          enabled: true
+      reimbursement:
         enabled: true
-      bulk_payments:
-        enabled: true
-    cards:
-      enabled: true
-      card_request:
-        enabled: true
-    reimbursement:
-      enabled: true
-  development:
-    <<: *defaults
-  test:
-    <<: *defaults
-  production:
-    <<: *defaults
-  ```
+    development:
+      <<: *defaults
+    test:
+      <<: *defaults
+    production:
+      <<: *defaults
+  
 
 
 _Note_: Certain Ruby/Bundler versions include a version of the Psych YAML parser which incorrectly handles merges (the `<<` in the example above.)
