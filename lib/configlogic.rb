@@ -5,6 +5,7 @@ require 'open-uri'
 # A simple settings solution using a YAML file. See README for more information.
 class Settingslogic < Hash
   class MissingSetting < StandardError; end
+  class RedisNotPresent < StandardError; end
 
   class << self
     def name # :nodoc:
@@ -31,6 +32,10 @@ class Settingslogic < Hash
 
     def config_class(value = nil)
       @config_class ||= value
+    end
+
+    def config_class_column(value = nil)
+      @config_class_column ||= value
     end
 
     def cache_values_to_redis(value = false)
@@ -108,6 +113,8 @@ class Settingslogic < Hash
   # Then you can pass a hash, and it just allows you to access the hash via methods.
   def initialize(hash_or_file = self.class.source, section = nil, key_trail = '')
     #puts "new! #{hash_or_file}"
+    raise RedisNotPresent.new if self.class.redis_key && ENV['REDIS_URL'].nil?
+
     case hash_or_file
     when nil
       raise Errno::ENOENT, "No file specified as Settingslogic source"
@@ -187,14 +194,27 @@ class Settingslogic < Hash
   end
 
   def find_key(trail, key, value)
-    if self.class.cache_values_to_redis && self.class.get_value_from_db
-      final_key = "#{trail}.#{key}"[1..-1] 
-      cache_key = "config-#{self.class.redis_key.call}-#{final_key}"
+    if self.class.cache_values_to_redis
+      final_key_for_db_fetch = "#{trail}.#{key}"[1..-1] 
+      cache_key = "config-#{self.class.redis_key.call}-#{final_key_for_db_fetch}"
+      puts cache_key
       Rails.cache.fetch(cache_key, expires_in: 24.hours) do
-        db_key = final_key.split(".").map{|a| "'#{a}'"}.join("->").sub(/.*\K->/, '->>')
-        db_key = "config->#{db_key}"
-        self.class.config_class.pluck(Arel.sql(db_key)).first
+        final_value(final_key_for_db_fetch, value)
       end
+    else
+      final_value(final_key_for_db_fetch, value)
+    end
+  end
+
+  def get_value_from_db?
+    self.class.get_value_from_db && self.class.config_class && !self.class.config_class_column.empty?
+  end
+
+  def final_value(final_key, value)
+    if get_value_from_db?
+      db_key = final_key.split(".").map{|a| "'#{a}'"}.join("->").sub(/.*\K->/, '->>')
+      db_key = "#{self.class.config_class_column}->#{db_key}"
+      self.class.config_class.pluck(Arel.sql(db_key)).first
     else
       value
     end
