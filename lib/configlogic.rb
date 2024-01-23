@@ -57,14 +57,22 @@ class Configlogic < Hash
 
     def source(value = nil)
       @source ||= value
-      unless self.config_class.respond_to? :handle_config_change
-        DynamicCallbackHandler.add_after_commit_callback_for_column(self, self.config_class, self.config_class_column)
+      unless self.config_class.constantize.respond_to? :handle_config_change
+        DynamicCallbackHandler.add_after_commit_callback_for_column(self, self.config_class.constantize, self.config_class_column)
       end
       @source
     end
 
     def redis_key(&value)
       @redis_key ||= value
+    end
+
+    def apartment_identifier_class(value = 'Client')
+      @apartment_identifier_class ||= value
+    end
+
+    def apartment_identifier_column(value = 'tenant_id')
+      @apartment_identifier_column ||= value
     end
 
     def config_class(value = nil)
@@ -243,14 +251,14 @@ class Configlogic < Hash
   end
 
   def get_value_from_db?
-    self.class.get_value_from_db && self.class.config_class && !self.class.config_class_column.empty?
+    self.class.get_value_from_db && self.class.config_class.constantize && !self.class.config_class_column.blank?
   end
 
   def final_value(final_key, value)
     if get_value_from_db?
       db_key = final_key.split(".").map{|a| "'#{a}'"}.join("->").sub(/.*\K->/, '->>')
       db_key = "#{self.class.config_class_column}->#{db_key}"
-      self.class.config_class.pluck(Arel.sql(db_key)).first
+      self.class.config_class.constantize.pluck(Arel.sql(db_key)).first
     else
       value
     end

@@ -1,18 +1,21 @@
 desc 'Config load'
 namespace :configlogic do
   task load: :environment do
-    def update_all_clients(incoming_config)
-      Client.all.each do |client|
-        Apartment::Tenant.switch(client.tenant_id) do
-          config = ClientConfig.first
+    def update_all_clients(incoming_config, klass)
+      apartment_klass = klass.apartment_identifier_class.constantize
+
+      apartment_klass.all.each do |client|
+        Apartment::Tenant.switch(client.send(klass.apartment_identifier_column.constantize)) do
+          config = klass.config_class.constantize.first
           if config
             if incoming_config.to_json != config.config.to_json
-              p "updating client #{client.subdomain}"
-              config.update(config: config.config.deep_merge(incoming_config))
+              p "updating client #{client&.subdomain}"
+              saved_config = config.send(klass.config_class_column)
+              config.update(config: saved_config.deep_merge(incoming_config))
             end
           else
-            p "creating #{client.subdomain}"
-            ClientConfig.create(config: incoming_config)
+            p "creating #{client&.subdomain}"
+            klass.config_class.constantize.create("#{klass.config_class_column}": incoming_config)
           end
         end
       end
@@ -24,19 +27,24 @@ namespace :configlogic do
       (array1 - array2 | array2 - array1) == []
     end
 
-    incoming_config = VpConfig.new("config/vp_client_config.yml")
-    config = ClientConfig.first
-    if config
-      unless hash_equal?(incoming_config, config.config)
-        p "updating public"
-        config.update(config: config.config.deep_merge(incoming_config))
-        byebug
-        update_all_clients(incoming_config)
+
+    Dir.glob("#{Rails.root}/config/configsetting/*.yml") do |file| 
+      file_name = File.basename(file, ".*")
+      klass = "Vp#{file_name}".classify.constantize
+      incoming_config = klass.new("config/configsetting/#{file_name}.yml")
+      config = klass.config_class.constantize.first
+      if config
+        unless hash_equal?(incoming_config, config.config)
+          p "updating public"
+          saved_config = config.send(klass.config_class_column)
+          config.update(config: saved_config.deep_merge(incoming_config))
+          update_all_clients(incoming_config, klass) if defined?(Apartment)
+        end
+      else
+        p "creating public"
+        klass.config_class.constantize.create("#{klass.config_class_column}": incoming_config)
+        update_all_clients(incoming_config, klass) if defined?(Apartment)
       end
-    else
-      p "creating public"
-      ClientConfig.create(config: incoming_config)
-      update_all_clients(incoming_config)
     end
   end
 end
