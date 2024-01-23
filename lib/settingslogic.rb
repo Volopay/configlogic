@@ -107,7 +107,6 @@ class Settingslogic < Hash
   # if you are using this in rails. If you pass a string it should be an absolute path to your settings file.
   # Then you can pass a hash, and it just allows you to access the hash via methods.
   def initialize(hash_or_file = self.class.source, section = nil, key_trail = '')
-    byebug
     #puts "new! #{hash_or_file}"
     case hash_or_file
     when nil
