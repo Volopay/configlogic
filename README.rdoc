@@ -1,65 +1,73 @@
-= Configlogic
+ https://github.com/Volopay/configlogic.git
 
-== Project Moved: This project has been moved to https://github.com/Configlogic/Configlogic
-
-Configlogic is a simple configuration / settings solution that uses an ERB enabled YAML file. It has been great for
-our apps, maybe you will enjoy it too.  Configlogic works with Rails, Sinatra, or any Ruby project.
-
-{<img src="https://badge.fury.io/rb/Configlogic.svg" alt="Gem Version" />}[http://badge.fury.io/rb/Configlogic]
-{<img src="https://travis-ci.org/Configlogic/Configlogic.svg" alt="Build Status" />}[https://travis-ci.org/Configlogic/Configlogic]
-{<img src="http://inch-ci.org/github/Configlogic/Configlogic.png?branch=master" alt="Inline docs" />}[http://inch-ci.org/github/Configlogic/Configlogic]
-
-== Helpful links
-
-* <b>Documentation:</b> http://rdoc.info/projects/binarylogic/Configlogic
-* <b>Repository:</b> http://github.com/binarylogic/Configlogic/tree/master
-* <b>Issues:</b> http://github.com/binarylogic/Configlogic/issues
+Configlogic is a simple configuration / settings solution that uses an ERB enabled YAML file. It has been based on https://github.com/settingslogic/settingslogic
 
 == Installation
-
-  gem install Configlogic
-
-== Usage
-
+  `gem 'configlogic', git: 'https://github.com/Volopay/configlogic.git'` in yout Gemfile
+== Usage (Make sure to follow conventions)
 === 1. Define your class
+Create a class in lib initializer like (Please add `Vp` in the class name)
+  ```
+  Rails.application.config.to_prepare do
+    class VpClientConfig < Configlogic
+        namespace Rails.env
+        
+        cache_values_to_redis true
+        get_value_from_db true
+        config_class 'ClientConfig'
+        config_class_column :config #this has to be a json column
+        redis_key { Apartment::Tenant.current } # this has to be proc
+        
+        source "#{Rails.root}/config/configsetting/client_config.yml" #This has to be very last call and mandatory
+      end
+    end
+```
 
-Instead of defining a Settings constant for you, that task is left to you. Simply create a class in your application
-that looks like:
-
-  class Settings < Configlogic
-    source "#{Rails.root}/config/application.yml"
-    namespace Rails.env
-  end
-
-Name it Settings, name it Config, name it whatever you want. Add as many or as few as you like. A good place to put
-this file in a rails app is app/models/settings.rb
-
-I felt adding a settings file in your app was more straightforward, less tricky, and more flexible.
+Few things to notice, source has to be last call.
+Options: 
+-`cache_values_to_redis` If you want to have cache the values, by default Rails.cache will be used
+-`get_value_from_db true` If you want to store config values in DB, otherwise the json file supplied in source would be used
+-`config_class` Class in which config json needs to be stored
+-`config_class_column` Column of above class in which config json needs to be stored
+-`redis_key` This needs to be a Proc, identifying a unique key prefix for keys, what gets saved in REDIS is something like this key `"config-517aa5ee0eaef2d5c6b91d705de0bba1-modules.payments-enabled"`
 
 === 2. Create your settings
 
-Notice above we specified an absolute path to our settings file called "application.yml". This is just a typical YAML file.
-Also notice above that we specified a namespace for our environment.  A namespace is just an optional string that corresponds
-to a key in the YAML file.
-
 Using a namespace allows us to change our configuration depending on our environment:
-
-  # config/application.yml
+    Make sure to have yml file name exactly same as initialize file name without Vp, in this example `client_config.yml` to `configsetting` folder
+  `config/configsetting/client_config.yml`
+  ```
   defaults: &defaults
-    cool:
-      saweet: nested settings
-    neat_setting: 24
-    awesome_setting: <%= "Did you know 5 + 5 = #{5 + 5}?" %>
+  host: "volopay.com"
+  modules:
+    payments:
+      enabled: false
+      ocr:
+        UI: Rajesh Raikwar
+        billing:
+        data: something
+        enabled: true
+        column_value: "OCR"
+      international_payments:
+        enabled: true
+      bulk_payments:
+        enabled: true
+    cards:
+      enabled: true
+      card_request:
+        enabled: true
+    reimbursement:
+      enabled: true
 
-  development:
-    <<: *defaults
-    neat_setting: 800
+development:
+  <<: *defaults
 
-  test:
-    <<: *defaults
+test:
+  <<: *defaults
 
-  production:
-    <<: *defaults
+production:
+  <<: *defaults
+```
 
 _Note_: Certain Ruby/Bundler versions include a version of the Psych YAML parser which incorrectly handles merges (the `<<` in the example above.)
 If your default settings seem to be overwriting your environment-specific settings, including the following lines in your config/boot.rb file may solve the problem:
@@ -72,92 +80,12 @@ If your default settings seem to be overwriting your environment-specific settin
   >> Rails.env
   => "development"
 
-  >> Settings.cool
-  => "#<Configlogic::Settings ... >"
+  >> VpConfig.get('host')
+  => volopay.com
 
-  >> Settings.cool.saweet
-  => "nested settings"
+  >> VpConfig.get('modules.payments.ocr.enabled')
+  => "true"
 
-  >> Settings.neat_setting
-  => 800
+  Things to know if you try to access in between hash, it will throw `OperationNotAllowed` exception
 
-  >> Settings.awesome_setting
-  => "Did you know 5 + 5 = 10?"
-
-You can use these settings anywhere, for example in a model:
-
-  class Post < ActiveRecord::Base
-    self.per_page = Settings.pagination.posts_per_page
-  end
-
-=== 4. Optional / dynamic settings
-
-Often, you will want to handle defaults in your application logic itself, to reduce the number of settings
-you need to put in your YAML file.  You can access an optional setting by using Hash notation:
-
-  >> Settings.messaging.queue_name
-  => Exception: Missing setting 'queue_name' in 'message' section in 'application.yml'
-
-  >> Settings.messaging['queue_name']
-  => nil
-
-  >> Settings.messaging['queue_name'] ||= 'user_mail'
-  => "user_mail"
-
-  >> Settings.messaging.queue_name
-  => "user_mail"
-
-Modifying our model example:
-
-  class Post < ActiveRecord::Base
-    self.per_page = Settings.posts['per_page'] || Settings.pagination.per_page
-  end
-
-This would allow you to specify a custom value for per_page just for posts, or
-to fall back to your default value if not specified.
-
-=== 5. Suppressing Exceptions Conditionally
-
-Raising exceptions for missing settings helps highlight configuration problems.  However, in a
-Rails app it may make sense to suppress this in production and return nil for missing settings.
-While it's useful to stop and highlight an error in development or test environments, this is
-often not the right answer for production.
-
-  class Settings < Configlogic
-    source "#{Rails.root}/config/application.yml"
-    namespace Rails.env
-    suppress_errors Rails.env.production?
-  end
-
-  >> Settings.non_existent_key
-  => nil
-
-== Note on Sinatra / Capistrano / Vlad
-
-Each of these frameworks uses a +set+ convention for settings, which actually defines methods
-in the global Object namespace:
-
-  set :application, "myapp"  # does "def application" globally
-
-This can cause collisions with Configlogic, since those methods are global. Luckily, the
-solution is to just add a call to load! in your class:
-
-  class Settings < Configlogic
-    source "#{Rails.root}/config/application.yml"
-    namespace Rails.env
-    load!
-  end
-
-It's probably always safest to add load! to your class, since this guarantees settings will be
-loaded at that time, rather than lazily later via method_missing.
-
-Finally, you can reload all your settings later as well:
-
-  Settings.reload!
-
-This is useful if you want to support changing your settings YAML without restarting your app.
-
-== Author
-
-Copyright (c) 2008-2010 {Ben Johnson}[http://github.com/binarylogic] of {Binary Logic}[http://www.binarylogic.com],
-released under the MIT license.  Support for optional settings and reloading by {Nate Wiger}[http://nate.wiger.org].
+  

@@ -67,12 +67,12 @@ class Configlogic < Hash
       @redis_key ||= value
     end
 
-    def apartment_identifier_class(value = 'Client')
-      @apartment_identifier_class ||= value
+    def apartment_identifier_class(value = :Client)
+      @apartment_identifier_class ||= value.to_s
     end
 
-    def apartment_identifier_column(value = 'tenant_id')
-      @apartment_identifier_column ||= value
+    def apartment_identifier_column(value = :tenant_id)
+      @apartment_identifier_column ||= value.to_s
     end
 
     def config_class(value = nil)

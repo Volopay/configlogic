@@ -3,7 +3,7 @@ $:.push File.expand_path("../lib", __FILE__)
 
 Gem::Specification.new do |s|
   s.name        = "configlogic"
-  s.version     = "2.0.13"
+  s.version     = "3.0.0"
   s.platform    = Gem::Platform::RUBY
   s.authors     = ["Rajesh Raikwar"]
   s.email       = ["rajesh@volopay.co"]
