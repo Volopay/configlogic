@@ -3,11 +3,25 @@ require "erb"
 require 'open-uri'
 
 # A simple settings solution using a YAML file. See README for more information.
-class Settingslogic < Hash
+class Configlogic < Hash
   class MissingSetting < StandardError; end
   class RedisNotPresent < StandardError; end
 
+  class OperationNotAllowed < StandardError; end
+
+  class DynamicCallbackHandler
+    def self.add_after_commit_callback_for_column(current_klass, klass, column_name)
+      klass.after_commit :handle_config_change, if: -> { saved_change_to_attribute?(column_name) }
+      # klass.after_commit :handle_config_change
+  
+      klass.define_method(:handle_config_change) do
+        current_klass.burst_cache!
+      end
+    end
+  end
+  
   class << self
+
     def name # :nodoc:
       self.superclass != Hash && instance.key?("name") ? instance.name : super
     end
@@ -22,8 +36,27 @@ class Settingslogic < Hash
       curs
     end
 
+    def get(key)
+      method = get_value(key)
+      raise OperationNotAllowed.new unless method.is_a? Proc
+  
+      method.call
+    end
+  
+    def burst_cache!
+      if cache_values_to_redis
+        keys = "config-#{redis_key.call}-*"
+        # p "bursting cache for keys: #{keys}"
+        Rails.cache.delete_matched(keys)
+      end
+    end
+
     def source(value = nil)
       @source ||= value
+      unless self.config_class.respond_to? :handle_config_change
+        DynamicCallbackHandler.add_after_commit_callback_for_column(self, self.config_class, self.config_class_column)
+      end
+      @source
     end
 
     def redis_key(&value)
@@ -112,8 +145,7 @@ class Settingslogic < Hash
   # if you are using this in rails. If you pass a string it should be an absolute path to your settings file.
   # Then you can pass a hash, and it just allows you to access the hash via methods.
   def initialize(hash_or_file = self.class.source, section = nil, key_trail = '')
-    #puts "new! #{hash_or_file}"
-    raise RedisNotPresent.new if self.class.redis_key && ENV['REDIS_URL'].nil?
+    # raise RedisNotPresent.new if self.class.redis_key && ENV['REDIS_URL'].nil?
 
     case hash_or_file
     when nil
@@ -197,7 +229,6 @@ class Settingslogic < Hash
     if self.class.cache_values_to_redis
       final_key_for_db_fetch = "#{trail}.#{key}"[1..-1] 
       cache_key = "config-#{self.class.redis_key.call}-#{final_key_for_db_fetch}"
-      puts cache_key
       Rails.cache.fetch(cache_key, expires_in: 24.hours) do
         final_value(final_key_for_db_fetch, value)
       end
