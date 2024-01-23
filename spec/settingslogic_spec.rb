@@ -2,32 +2,32 @@ require File.expand_path(File.dirname(__FILE__) + "/spec_helper")
 
 describe "Configlogic" do
   it "should access settings" do
-    Settings.setting2.call.should == 5
+    Settings.get('setting2').should == 5
   end
   
   it "should access nested settings" do
-    Settings.setting1.setting1_child.call.should == "saweet"
+    Settings.get('setting1.setting1_child').should == "saweet"
   end
   
   it "should access settings in nested arrays" do
-    Settings.array.first.name.call.should == "first"
+    Settings.get('array.first.name').should == "first"
   end
 
   it "should access deep nested settings" do
-    Settings.setting1.deep.another.call.should == "my value"
+    Settings.get('setting1.deep.another').should == "my value"
   end
 
   it "should access extra deep nested settings" do
-    Settings.setting1.deep.child.value.call.should == 2
+    Settings.get('setting1.deep.child.value').should == 2
   end
 
   it "should enable erb" do
-    Settings.setting3.call.should == 25
+    Settings.get('setting3').should == 25
   end
 
   it "should namespace settings" do
-    Settings2.setting1_child.call.should == "saweet"
-    Settings2.deep.another.call.should == "my value"
+    Settings2.get('setting1_child').should == "saweet"
+    Settings2.get('deep.another').should == "my value"
   end
 
   it "should return the namespace" do

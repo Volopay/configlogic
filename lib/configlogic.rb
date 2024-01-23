@@ -1,6 +1,8 @@
 require "yaml"
 require "erb"
 require 'open-uri'
+# require 'open-uri'
+require 'railtie' if defined?(Rails)
 
 # A simple settings solution using a YAML file. See README for more information.
 class Configlogic < Hash
