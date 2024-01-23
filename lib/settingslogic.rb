@@ -25,18 +25,26 @@ class Settingslogic < Hash
       @source ||= value
     end
 
-    def redis_key_name_space(&value)
-      @redis_key_name_space ||= value
+    def redis_key(&value)
+      @redis_key ||= value
     end
 
     def config_class(value = nil)
       @config_class ||= value
     end
 
+    def cache_values_to_redis(value = false)
+      @cache_values_to_redis ||= value
+    end
+
+    def get_value_from_db(value = false)
+      @get_value_from_db ||= value
+    end
+
     def namespace(value = nil)
       @namespace ||= value
     end
-
+  
     def suppress_errors(value = nil)
       @suppress_errors ||= value
     end
@@ -86,7 +94,6 @@ class Settingslogic < Hash
         return unless key.to_s =~ /^\w+$/  # could have "some-setting:" which blows up eval
         instance_eval "def #{key}; instance.send(:#{key}); end"
       end
-
   end
 
   # Initializes a new settings object. You can initialize an object in any of the following ways:
@@ -100,6 +107,7 @@ class Settingslogic < Hash
   # if you are using this in rails. If you pass a string it should be an absolute path to your settings file.
   # Then you can pass a hash, and it just allows you to access the hash via methods.
   def initialize(hash_or_file = self.class.source, section = nil, key_trail = '')
+    byebug
     #puts "new! #{hash_or_file}"
     case hash_or_file
     when nil
@@ -173,19 +181,23 @@ class Settingslogic < Hash
         elsif value.is_a?(Array) && value.all?{|v| v.is_a? Hash}
           value.map{|v| self.class.new(v)}
         else
-          Proc.new{find_key("#{@key_trail}", "#{key}")}
+          Proc.new{find_key("#{@key_trail}", "#{key}", value)}
         end
       end
     EndEval
   end
 
-  def find_key(trail, key)
-    final_key = "#{trail}.#{key}"[1..-1] 
-    cache_key = "config-#{self.class.redis_key_name_space.call}-#{final_key}"
-    Rails.cache.fetch(cache_key, expires_in: 24.hours) do
-      db_key = final_key.split(".").map{|a| "'#{a}'"}.join("->").sub(/.*\K->/, '->>')
-      db_key = "config->#{db_key}"
-      self.class.config_class.pluck(Arel.sql(db_key)).first
+  def find_key(trail, key, value)
+    if self.class.cache_values_to_redis && self.class.get_value_from_db
+      final_key = "#{trail}.#{key}"[1..-1] 
+      cache_key = "config-#{self.class.redis_key.call}-#{final_key}"
+      Rails.cache.fetch(cache_key, expires_in: 24.hours) do
+        db_key = final_key.split(".").map{|a| "'#{a}'"}.join("->").sub(/.*\K->/, '->>')
+        db_key = "config->#{db_key}"
+        self.class.config_class.pluck(Arel.sql(db_key)).first
+      end
+    else
+      value
     end
   end
 

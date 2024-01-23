@@ -5,8 +5,8 @@ Gem::Specification.new do |s|
   s.name        = "configlogic"
   s.version     = "2.0.9"
   s.platform    = Gem::Platform::RUBY
-  s.authors     = ["Ben Johnson"]
-  s.email       = ["bjohnson@binarylogic.com"]
+  s.authors     = ["Rajesh Raikwar"]
+  s.email       = ["rajesh@volopay.co"]
   s.homepage    = "http://github.com/binarylogic/settingslogic"
   s.summary     = %q{A simple and straightforward settings solution that uses an ERB enabled YAML file and a singleton design pattern.}
   s.description = %q{A simple and straightforward settings solution that uses an ERB enabled YAML file and a singleton design pattern.}
