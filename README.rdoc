@@ -88,4 +88,21 @@ If your default settings seem to be overwriting your environment-specific settin
 
   Things to know if you try to access in between hash, it will throw `OperationNotAllowed` exception
 
+  === 3. Access your settings
+
+  >> Rails.env
+  => "development"
+
+  >> VpConfig.get('host')
+  => volopay.com
+
+  >> VpConfig.get('modules.payments.ocr.enabled')
+  => "true"
+
+  Things to know if you try to access in between hash, it will throw `OperationNotAllowed` exception
   
+ === 4. Added rake file
+ `rake configlogic:load` this gem also adds a rake task, which can be used to merge new settings the settings, whenever there are any changes in main config yml in code. it will basically loop all clients(if Apartment present, otherwise in public schema). and update the settings in all clients.
+ 
+ === 5. Added cache burst after commit to class
+    It adds a after commit hooks into the config_class provided that burset the cache variables as soon as there is a commit to config_class_column
